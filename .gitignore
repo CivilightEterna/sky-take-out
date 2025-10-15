@@ -4,3 +4,6 @@
 *.class
 *Test.java
 **/test/
+# 忽略包含敏感信息的开发环境配置文件
+sky-server/src/main/resources/application-dev.yml
+sky-server/src/main/resources/application.yml
