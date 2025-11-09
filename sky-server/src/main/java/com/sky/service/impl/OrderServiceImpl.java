@@ -21,6 +21,7 @@ import com.sky.vo.OrderPaymentVO;
 import com.sky.vo.OrderStatisticsVO;
 import com.sky.vo.OrderSubmitVO;
 import com.sky.vo.OrderVO;
+import com.sky.websocket.WebSocketServer;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -52,7 +53,8 @@ public class OrderServiceImpl implements OrderService {
     private WeChatPayUtil weChatPayUtil;
     @Autowired
     private UserMapper userMapper;
-
+    @Autowired
+    private WebSocketServer webSocketServer;
 
 
     @Value("${sky.shop.address}")
@@ -160,6 +162,7 @@ public class OrderServiceImpl implements OrderService {
 
         log.info("调用updateStatus,用于替换微信支付更新数据库状态的问题");
         orderMapper.updateStatus( OrderStatus, OrderPaidStatus, check_out_time, orderNumber);
+        paySuccess(orderNumber);//修改订单状态为支付成功，添加这行才有来单提醒，这行只是用于个人测试
 
         return vo;
     }
@@ -183,6 +186,14 @@ public class OrderServiceImpl implements OrderService {
                 .build();
 
         orderMapper.update(orders);
+
+        // 通过WebSocket向客户端推送订单状态type orderId content
+        Map map = new HashMap();
+        map.put("type", 1);//1表示来单提醒 2表示客户催单
+        map.put("orderId", ordersDB.getId());
+        map.put("content", "订单号：" + outTradeNo);
+        String json = JSON.toJSONString(map);
+        webSocketServer.sendToAllClient(json);
     }
 
     /**
